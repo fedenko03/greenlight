@@ -77,7 +77,7 @@ func ValidateUser(v *validator.Validator, user *User) {
 }
 
 type UserModel struct {
-	DB *pgxpool.Pool
+	Pool *pgxpool.Pool
 }
 
 func (m UserModel) Insert(user *User) error {
@@ -88,14 +88,10 @@ RETURNING id, created_at, version`
 	args := []any{user.Name, user.Email, user.Password.hash, user.Activated}
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
-	// If the table already contains a record with this email address, then when we try
-	// to perform the insert there will be a violation of the UNIQUE "users_email_key"
-	// constraint that we set up in the previous chapter. We check for this error
-	// specifically, and return custom ErrDuplicateEmail error instead.
-	err := m.DB.QueryRow(ctx, query, args...).Scan(&user.ID, &user.CreatedAt, &user.Version)
+	err := m.Pool.QueryRow(ctx, query, args...).Scan(&user.ID, &user.CreatedAt, &user.Version)
 	if err != nil {
 		switch {
-		case err.Error() == `pq: duplicate key value violates unique constraint "users_email_key"`:
+		case err.Error() == `ERROR: duplicate key value violates unique constraint "users_email_key"`:
 			return ErrDuplicateEmail
 		default:
 			return err
@@ -112,7 +108,7 @@ WHERE email = $1`
 	var user User
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
-	err := m.DB.QueryRow(ctx, query, email).Scan(
+	err := m.Pool.QueryRow(ctx, query, email).Scan(
 		&user.ID,
 		&user.CreatedAt,
 		&user.Name,
@@ -148,10 +144,10 @@ RETURNING version`
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
-	err := m.DB.QueryRow(ctx, query, args...).Scan(&user.Version)
+	err := m.Pool.QueryRow(ctx, query, args...).Scan(&user.Version)
 	if err != nil {
 		switch {
-		case err.Error() == `pq: duplicate key value violates unique constraint "users_email_key"`:
+		case err.Error() == `ERROR: duplicate key value violates unique constraint "users_email_key"`:
 			return ErrDuplicateEmail
 		case errors.Is(err, sql.ErrNoRows):
 			return ErrEditConflict
