@@ -3,10 +3,12 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"greenlight.aitu.kz/internal/data"
 	"greenlight.aitu.kz/internal/jsonlog"
 	"greenlight.aitu.kz/internal/mailer"
+	"net/http"
 	"os"
 	"sync"
 	"time"
@@ -44,6 +46,10 @@ type application struct {
 	wg     sync.WaitGroup
 }
 
+func (app *application) invalidCredentialsResponse(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("Error")
+}
+
 func main() {
 	var cfg config
 
@@ -57,11 +63,12 @@ func main() {
 	flag.IntVar(&cfg.limiter.burst, "limiter-burst", 4, "Rate limiter maximum burst")
 	flag.BoolVar(&cfg.limiter.enabled, "limiter-enabled", true, "Enable rate limiter")
 
-	flag.StringVar(&cfg.smtp.host, "smtp-host", "smtp.office365.com", "SMTP host")
+	flag.StringVar(&cfg.smtp.host, "smtp-host", "smtp-mail.outlook.com", "SMTP host")
 	flag.IntVar(&cfg.smtp.port, "smtp-port", 587, "SMTP port")
 	flag.StringVar(&cfg.smtp.username, "smtp-username", "211524@astanait.edu.kz", "SMTP username")
-	flag.StringVar(&cfg.smtp.password, "smtp-password", "ForStudy1234", "SMTP password")
+	flag.StringVar(&cfg.smtp.password, "smtp-password", "FedA1235.", "SMTP password")
 	flag.StringVar(&cfg.smtp.sender, "smtp-sender", "Aleksey <211524@astanait.edu.kz>", "SMTP sender")
+
 	flag.Parse()
 
 	logger := jsonlog.New(os.Stdout, jsonlog.LevelInfo)
@@ -123,3 +130,10 @@ func configurePool(cfg config) (*pgxpool.Config, error) {
 	poolCfg.MaxConnIdleTime = duration
 	return poolCfg, nil
 }
+
+/*
+go run ./cmd/api
+source $HOME/.profile
+echo $GREENLIGHT_DB_DSN
+psql $GREENLIGHT_DB_DSN
+*/
